@@ -18,8 +18,8 @@
 
 namespace JMS\AopBundle;
 
-use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use JMS\AopBundle\DependencyInjection\Compiler\PointcutMatchingPass;
+use Symfony\Component\DependencyInjection\Compiler\PassConfig;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\HttpKernel\Bundle\Bundle;
 

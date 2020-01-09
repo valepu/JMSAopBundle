@@ -2,7 +2,7 @@
 Overview
 ========
 
-This bundle adds AOP capabilities to Symfony2.
+This bundle adds AOP capabilities to Symfony 4.
 
 If you haven't heard of AOP yet, it basically allows you to separate a
 cross-cutting concern (for example, security checks) into a dedicated class,
@@ -16,31 +16,16 @@ Installation
 ------------
 Checkout a copy of the code::
 
-    git submodule add https://github.com/schmittjoh/JMSAopBundle.git src/JMS/AopBundle
+    composer require demoniacdeath/aop-bundle
 
 Then register the bundle with your kernel::
 
-    // in AppKernel::registerBundles()
-    $bundles = array(
+    // in bundles.php
+    return [
         // ...
-        new JMS\AopBundle\JMSAopBundle(),
+        JMS\AopBundle\JMSAopBundle::class => ['all' => true],
         // ...
-    );
-
-This bundle also requires the CG library for code generation::
-
-    git submodule add https://github.com/schmittjoh/cg-library.git vendor/cg-library
-
-Make sure that you also register the namespaces with the autoloader::
-
-    // app/autoload.php
-    $loader->registerNamespaces(array(
-        // ...
-        'JMS'              => __DIR__.'/../vendor/bundles',
-        'CG'               => __DIR__.'/../vendor/cg-library/src',
-        // ...
-    ));    
-
+    ];
 
 Configuration
 -------------

@@ -20,7 +20,7 @@ namespace JMS\AopBundle\Aop;
 
 final class PointcutContainer
 {
-    private $pointcuts;
+    private array $pointcuts;
 
     /**
      * @param array<PointcutInterface> $pointcuts
@@ -30,7 +30,7 @@ final class PointcutContainer
         $this->pointcuts = $pointcuts;
     }
 
-    public function getPointcuts()
+    public function getPointcuts(): array
     {
         return $this->pointcuts;
     }

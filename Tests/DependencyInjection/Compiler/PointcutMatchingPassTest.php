@@ -18,32 +18,36 @@
 
 namespace JMS\AopBundle\Tests\DependencyInjection\Compiler;
 
-use JMS\AopBundle\Exception\RuntimeException;
-use Symfony\Component\DependencyInjection\Compiler\ResolveParameterPlaceHoldersPass;
-use JMS\AopBundle\DependencyInjection\JMSAopExtension;
+use Exception;
 use JMS\AopBundle\DependencyInjection\Compiler\PointcutMatchingPass;
-use Symfony\Component\Filesystem\Filesystem;
+use JMS\AopBundle\DependencyInjection\JMSAopExtension;
+use JMS\AopBundle\Exception\RuntimeException;
+use PHPUnit\Framework\TestCase;
+use ReflectionException;
+use Symfony\Component\DependencyInjection\Compiler\ResolveParameterPlaceHoldersPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\Filesystem\Filesystem;
 
-class PointcutMatchingPassTest extends \PHPUnit_Framework_TestCase
+class PointcutMatchingPassTest extends TestCase
 {
-    private $cacheDir;
-    private $fs;
+    private string $cacheDir;
+    private Filesystem $fs;
 
+    /**
+     * @throws ReflectionException
+     * @throws Exception
+     */
     public function testProcess()
     {
         $container = $this->getContainer();
 
         $container
             ->register('pointcut', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingPointcut')
-            ->addTag('jms_aop.pointcut', array('interceptor' => 'interceptor'))
-        ;
+            ->addTag('jms_aop.pointcut', array('interceptor' => 'interceptor'));
         $container
-            ->register('interceptor', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingInterceptor')
-        ;
+            ->register('interceptor', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingInterceptor');
         $container
-            ->register('test', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\TestService')
-        ;
+            ->register('test', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\TestService');
 
         $this->process($container);
 
@@ -54,9 +58,9 @@ class PointcutMatchingPassTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(array('delete'), $container->get('interceptor')->getLog());
     }
 
-    protected function setUp()
+    protected function setUp(): void
     {
-        $this->cacheDir = sys_get_temp_dir().'/jms_aop_test';
+        $this->cacheDir = sys_get_temp_dir() . '/jms_aop_test';
         $this->fs = new Filesystem();
 
         if (is_dir($this->cacheDir)) {
@@ -68,12 +72,16 @@ class PointcutMatchingPassTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
         $this->fs->remove($this->cacheDir);
     }
 
-    private function getContainer()
+    /**
+     * @return ContainerBuilder
+     * @throws Exception
+     */
+    private function getContainer(): ContainerBuilder
     {
         $container = new ContainerBuilder();
 
@@ -85,7 +93,11 @@ class PointcutMatchingPassTest extends \PHPUnit_Framework_TestCase
         return $container;
     }
 
-    private function process(ContainerBuilder $container)
+    /**
+     * @param ContainerBuilder $container
+     * @throws ReflectionException
+     */
+    private function process(ContainerBuilder $container): void
     {
         $pass = new ResolveParameterPlaceHoldersPass();
         $pass->process($container);

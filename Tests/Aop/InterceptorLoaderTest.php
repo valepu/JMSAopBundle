@@ -18,13 +18,18 @@
 
 namespace JMS\AopBundle\Tests\Aop;
 
+use CG\Proxy\MethodInterceptorInterface;
 use JMS\AopBundle\Aop\InterceptorLoader;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use ReflectionMethod;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class InterceptorLoaderTest extends TestCase
 {
     public function testLoadInterceptors()
     {
+        /** @var MockObject|MethodInterceptorInterface $interceptor */
         $interceptor = $this->getMockBuilder('CG\Proxy\MethodInterceptorInterface')->getMock();
 
         list($loader, $container) = $this->getLoader(array(
@@ -37,10 +42,9 @@ class InterceptorLoaderTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->equalTo('foo'))
-            ->will($this->returnValue($interceptor))
-        ;
+            ->will($this->returnValue($interceptor));
 
-        $method = new \ReflectionMethod('JMS\AopBundle\Tests\Aop\InterceptorLoaderTestClass', 'foo');
+        $method = new ReflectionMethod('JMS\AopBundle\Tests\Aop\InterceptorLoaderTestClass', 'foo');
 
         $this->assertSame(array($interceptor), $loader->loadInterceptors($method));
         // yes, twice
@@ -49,6 +53,7 @@ class InterceptorLoaderTest extends TestCase
 
     private function getLoader(array $interceptors = array())
     {
+        /** @var MockObject|ContainerInterface  $container */
         $container = $this->getMockBuilder('Symfony\Component\DependencyInjection\ContainerInterface')->getMock();
 
         return array(new InterceptorLoader($container, $interceptors), $container);

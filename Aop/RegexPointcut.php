@@ -18,6 +18,9 @@
 
 namespace JMS\AopBundle\Aop;
 
+use ReflectionClass;
+use ReflectionMethod;
+
 /**
  * A regex pointcut implementation.
  *
@@ -27,23 +30,23 @@ namespace JMS\AopBundle\Aop;
  */
 class RegexPointcut implements PointcutInterface
 {
-    private $pattern;
+    private string $pattern;
 
     /**
-     * @param array<string> $pattern
+     * @param string $pattern
      */
-    public function __construct($pattern)
+    public function __construct(string $pattern)
     {
         $this->pattern = $pattern;
     }
 
-    public function matchesClass(\ReflectionClass $class)
+    public function matchesClass(ReflectionClass $class): bool
     {
         return true;
     }
 
-    public function matchesMethod(\ReflectionMethod $method)
+    public function matchesMethod(ReflectionMethod $method): bool
     {
-        return 0 < preg_match('#'.$this->pattern.'#', sprintf('%s::%s', $method->class, $method->name));
+        return 0 < preg_match('#' . $this->pattern . '#', sprintf('%s::%s', $method->class, $method->name));
     }
 }

@@ -19,6 +19,8 @@
 namespace JMS\AopBundle\Aop;
 
 use CG\Proxy\InterceptorLoaderInterface;
+use CG\Proxy\MethodInterceptorInterface;
+use ReflectionMethod;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -28,9 +30,9 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  */
 class InterceptorLoader implements InterceptorLoaderInterface
 {
-    private $container;
-    private $interceptors;
-    private $loadedInterceptors = array();
+    private ContainerInterface $container;
+    private array $interceptors;
+    private array $loadedInterceptors = array();
 
     /**
      * @param ContainerInterface $container
@@ -42,7 +44,11 @@ class InterceptorLoader implements InterceptorLoaderInterface
         $this->interceptors = $interceptors;
     }
 
-    public function loadInterceptors(\ReflectionMethod $method)
+    /**
+     * @param ReflectionMethod $method
+     * @return array|MethodInterceptorInterface[]
+     */
+    public function loadInterceptors(ReflectionMethod $method): array
     {
         if (!isset($this->interceptors[$method->class][$method->name])) {
             return array();

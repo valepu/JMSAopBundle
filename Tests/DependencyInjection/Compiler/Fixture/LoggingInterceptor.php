@@ -18,12 +18,12 @@
 
 namespace JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture;
 
-use CG\Proxy\MethodInvocation;
 use CG\Proxy\MethodInterceptorInterface;
+use CG\Proxy\MethodInvocation;
 
 class LoggingInterceptor implements MethodInterceptorInterface
 {
-    private $log = array();
+    private array $log = array();
 
     public function getLog()
     {

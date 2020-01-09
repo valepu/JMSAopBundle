@@ -20,17 +20,21 @@ namespace JMS\AopBundle\DependencyInjection\Compiler;
 
 use CG\Core\ClassUtils;
 use CG\Core\DefaultNamingStrategy;
+use CG\Core\ReflectionUtils;
 use CG\Generator\RelativePath;
-use JMS\AopBundle\Exception\RuntimeException;
-use Symfony\Component\Config\Resource\FileResource;
-use Symfony\Component\DependencyInjection\Reference;
 use CG\Proxy\Enhancer;
 use CG\Proxy\InterceptionGenerator;
-use Symfony\Component\DependencyInjection\Definition;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Exception;
 use JMS\AopBundle\Aop\PointcutInterface;
-use CG\Core\ReflectionUtils;
+use JMS\AopBundle\Exception\RuntimeException;
+use ReflectionClass;
+use ReflectionException;
+use ReflectionMethod;
+use Symfony\Component\Config\Resource\FileResource;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\Reference;
 
 /**
  * Matches pointcuts against service methods.
@@ -42,9 +46,9 @@ use CG\Core\ReflectionUtils;
  */
 class PointcutMatchingPass implements CompilerPassInterface
 {
-    private $pointcuts;
-    private $cacheDir;
-    private $container;
+    private ?array $pointcuts;
+    private string $cacheDir;
+    private ContainerBuilder $container;
 
     /**
      * @param array<PointcutInterface> $pointcuts
@@ -54,10 +58,15 @@ class PointcutMatchingPass implements CompilerPassInterface
         $this->pointcuts = $pointcuts;
     }
 
-    public function process(ContainerBuilder $container)
+    /**
+     * @param ContainerBuilder $container
+     * @throws ReflectionException
+     * @throws Exception
+     */
+    public function process(ContainerBuilder $container): void
     {
         $this->container = $container;
-        $this->cacheDir = $container->getParameter('jms_aop.cache_dir').'/proxies';
+        $this->cacheDir = $container->getParameter('jms_aop.cache_dir') . '/proxies';
         $pointcuts = $this->getPointcuts();
 
         $interceptors = array();
@@ -71,15 +80,16 @@ class PointcutMatchingPass implements CompilerPassInterface
 
         $container
             ->getDefinition('jms_aop.interceptor_loader')
-            ->addArgument($interceptors)
-        ;
+            ->addArgument($interceptors);
     }
 
     /**
      * @param array<PointcutInterface> $pointcuts
      * @param array<string,string> $interceptors
+     * @param array $a
+     * @throws ReflectionException
      */
-    private function processInlineDefinitions($pointcuts, &$interceptors, array $a)
+    private function processInlineDefinitions($pointcuts, &$interceptors, array $a): void
     {
         foreach ($a as $k => $v) {
             if ($v instanceof Definition) {
@@ -91,25 +101,23 @@ class PointcutMatchingPass implements CompilerPassInterface
     }
 
     /**
+     * @param Definition $definition
      * @param array<PointcutInterface> $pointcuts
      * @param array<string,string> $interceptors
+     * @throws ReflectionException
      */
-    private function processDefinition(Definition $definition, $pointcuts, &$interceptors)
+    private function processDefinition(Definition $definition, $pointcuts, &$interceptors): void
     {
         if ($definition->isSynthetic()) {
             return;
         }
 
-        // Symfony 2.6 getFactory method
-        // TODO: Use only getFactory when bumping require to Symfony >= 2.6
         if (method_exists($definition, 'getFactory') && $definition->getFactory()) {
-            return;
-        }
-        if (!method_exists($definition, 'getFactory') && ($definition->getFactoryService() || $definition->getFactoryClass())) {
             return;
         }
 
         if ($originalFilename = $definition->getFile()) {
+            /** @noinspection PhpIncludeInspection */
             require_once $originalFilename;
         }
 
@@ -117,7 +125,7 @@ class PointcutMatchingPass implements CompilerPassInterface
             return;
         }
 
-        $class = new \ReflectionClass($definition->getClass());
+        $class = new ReflectionClass($definition->getClass());
 
         // check if class is matched
         $matchingPointcuts = array();
@@ -131,7 +139,7 @@ class PointcutMatchingPass implements CompilerPassInterface
             return;
         }
 
-        $this->addResources($class, $this->container);
+        $this->addResources($class);
 
         if ($class->isFinal()) {
             return;
@@ -164,10 +172,10 @@ class PointcutMatchingPass implements CompilerPassInterface
 
         $interceptors[ClassUtils::getUserClass($class->name)] = $classAdvices;
 
-        $proxyFilename = $this->cacheDir.'/'.str_replace('\\', '-', $class->name).'.php';
+        $proxyFilename = $this->cacheDir . '/' . str_replace('\\', '-', $class->name) . '.php';
 
         $generator = new InterceptionGenerator();
-        $generator->setFilter(function(\ReflectionMethod $method) use ($classAdvices) {
+        $generator->setFilter(function (ReflectionMethod $method) use ($classAdvices) {
             return isset($classAdvices[$method->name]);
         });
 
@@ -182,7 +190,7 @@ class PointcutMatchingPass implements CompilerPassInterface
         $enhancer = new Enhancer($class, array(), array(
             $generator
         ));
-        $enhancer->setNamingStrategy(new DefaultNamingStrategy('EnhancedProxy'.substr(md5($this->container->getParameter('jms_aop.cache_dir')), 0, 8)));
+        $enhancer->setNamingStrategy(new DefaultNamingStrategy('EnhancedProxy' . substr(md5($this->container->getParameter('jms_aop.cache_dir')), 0, 8)));
         $enhancer->writeClass($proxyFilename);
         $definition->setFile($proxyFilename);
         $definition->setClass($enhancer->getClassName($class));
@@ -191,16 +199,14 @@ class PointcutMatchingPass implements CompilerPassInterface
         ));
     }
 
-    private function relativizePath($targetPath, $path)
+    private function relativizePath($targetPath, $path): string
     {
         $commonPath = dirname($targetPath);
 
         $level = 0;
-        while ( ! empty($commonPath)) {
+        while (!empty($commonPath)) {
             if (0 === strpos($path, $commonPath)) {
-                $relativePath = str_repeat('../', $level).substr($path, strlen($commonPath) + 1);
-
-                return $relativePath;
+                return str_repeat('../', $level) . substr($path, strlen($commonPath) + 1);
             }
 
             $commonPath = dirname($commonPath);
@@ -210,14 +216,18 @@ class PointcutMatchingPass implements CompilerPassInterface
         return $path;
     }
 
-    private function addResources(\ReflectionClass $class)
+    private function addResources(ReflectionClass $class): void
     {
         do {
             $this->container->addResource(new FileResource($class->getFilename()));
         } while (($class = $class->getParentClass()) && $class->getFilename());
     }
 
-    private function getPointcuts()
+    /**
+     * @return array
+     * @throws Exception
+     */
+    private function getPointcuts(): array
     {
         if (null !== $this->pointcuts) {
             return $this->pointcuts;
@@ -227,7 +237,7 @@ class PointcutMatchingPass implements CompilerPassInterface
 
         foreach ($this->container->findTaggedServiceIds('jms_aop.pointcut') as $id => $attr) {
             if (!isset($attr[0]['interceptor'])) {
-                throw new RuntimeException('You need to set the "interceptor" attribute for the "jms_aop.pointcut" tag of service "'.$id.'".');
+                throw new RuntimeException('You need to set the "interceptor" attribute for the "jms_aop.pointcut" tag of service "' . $id . '".');
             }
 
             $pointcutReferences[$attr[0]['interceptor']] = new Reference($id);
@@ -236,8 +246,7 @@ class PointcutMatchingPass implements CompilerPassInterface
 
         $this->container
             ->getDefinition('jms_aop.pointcut_container')
-            ->addArgument($pointcutReferences)
-        ;
+            ->addArgument($pointcutReferences);
 
         return $pointcuts;
     }
