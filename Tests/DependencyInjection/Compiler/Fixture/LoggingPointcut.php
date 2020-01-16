@@ -39,6 +39,8 @@ class LoggingPointcut implements PointcutInterface
      */
     public function matchesMethod(ReflectionMethod $method): bool
     {
-        return false !== strpos($method->name, 'delete');
+        return false !== strpos($method->name, 'delete')
+            || false !== strpos($method->name, 'optional')
+            || false !== strpos($method->name, 'nothing');
     }
 }

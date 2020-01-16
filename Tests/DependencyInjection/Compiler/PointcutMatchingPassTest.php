@@ -21,7 +21,9 @@ namespace JMS\AopBundle\Tests\DependencyInjection\Compiler;
 use Exception;
 use JMS\AopBundle\DependencyInjection\Compiler\PointcutMatchingPass;
 use JMS\AopBundle\DependencyInjection\JMSAopExtension;
-use JMS\AopBundle\Exception\RuntimeException;
+use JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingInterceptor;
+use JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingPointcut;
+use JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\TestService;
 use PHPUnit\Framework\TestCase;
 use ReflectionException;
 use Symfony\Component\DependencyInjection\Compiler\ResolveParameterPlaceHoldersPass;
@@ -42,20 +44,27 @@ class PointcutMatchingPassTest extends TestCase
         $container = $this->getContainer();
 
         $container
-            ->register('pointcut', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingPointcut')
+            ->register('pointcut', LoggingPointcut::class)
             ->addTag('jms_aop.pointcut', array('interceptor' => 'interceptor'));
         $container
-            ->register('interceptor', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\LoggingInterceptor');
+            ->register('interceptor', LoggingInterceptor::class);
         $container
-            ->register('test', 'JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\TestService');
+            ->register('test', TestService::class);
 
         $this->process($container);
 
+        /** @var TestService $service */
         $service = $container->get('test');
-        $this->assertInstanceOf('JMS\AopBundle\Tests\DependencyInjection\Compiler\Fixture\TestService', $service);
+        $this->assertInstanceOf(TestService::class, $service);
         $this->assertTrue($service->add());
         $this->assertTrue($service->delete());
-        $this->assertEquals(array('delete'), $container->get('interceptor')->getLog());
+        $this->assertNull($service->optional());
+        $service->nothing();
+        $this->assertEquals([
+            'delete',
+            'optional',
+            'nothing',
+        ], $container->get('interceptor')->getLog());
     }
 
     protected function setUp(): void
@@ -67,9 +76,7 @@ class PointcutMatchingPassTest extends TestCase
             $this->fs->remove($this->cacheDir);
         }
 
-        if (false === @mkdir($this->cacheDir, 0777, true)) {
-            throw new RuntimeException(sprintf('Could not create cache dir "%s".', $this->cacheDir));
-        }
+        $this->fs->mkdir($this->cacheDir, 0777);
     }
 
     protected function tearDown(): void
@@ -86,9 +93,9 @@ class PointcutMatchingPassTest extends TestCase
         $container = new ContainerBuilder();
 
         $extension = new JMSAopExtension();
-        $extension->load(array(array(
+        $extension->load([[
             'cache_dir' => $this->cacheDir,
-        )), $container);
+        ]], $container);
 
         return $container;
     }
