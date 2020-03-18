@@ -20,7 +20,7 @@
   "require": {
     "php": "^7.4",
     "symfony/framework-bundle": "4.4.*",
-    "demoniacdeath/cg": "^2.0"
+    "demoniacdeath/cg": "^2.1"
   },
   "require-dev": {
     "phpunit/phpunit": "^8.0"
