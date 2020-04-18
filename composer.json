@@ -1,5 +1,5 @@
 {
-  "name": "demoniacdeath/aop-bundle",
+  "name": "valepu/aop-bundle",
   "description": "Adds AOP capabilities to Symfony2",
   "keywords": [
     "annotations",
